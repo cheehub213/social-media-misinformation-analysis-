@@ -1,0 +1,355 @@
+<h1 id="politifact-fact-checking-data-model">PolitiFact Fact-Checking
+Data Model</h1>
+<h2 id="dimensional-star-schema-design">Dimensional Star Schema
+Design</h2>
+<p><strong>IT300 - Data Preparation &amp; ETL Project</strong><br />
+<strong>Tunis Business School | December 2025</strong></p>
+<hr />
+<h2 id="star-schema-diagram">📊 Star Schema Diagram</h2>
+<pre><code>                                    ┌─────────────────────────┐
+                                    │      Dim_Date           │
+                                    ├─────────────────────────┤
+                                    │ PK: Date_Key (INT)      │
+                                    │ Full_Date (DATE)        │
+                                    │ Day (INT)               │
+                                    │ Day_Name (VARCHAR)      │
+                                    │ Week_Number (INT)       │
+                                    │ Month (INT)             │
+                                    │ Month_Name (VARCHAR)    │
+                                    │ Quarter (INT)           │
+                                    │ Year (INT)              │
+                                    │ Is_Weekend (BOOLEAN)    │
+                                    │ Is_Holiday (BOOLEAN)    │
+                                    └───────────┬─────────────┘
+                                                │
+                                                │ FK: Date_Key
+┌─────────────────────────┐                     │                     ┌─────────────────────────┐
+│      Dim_Source         │                     │                     │      Dim_Label          │
+├─────────────────────────┤                     │                     ├─────────────────────────┤
+│ PK: Source_Key (INT)    │                     │                     │ PK: Label_Key (INT)     │
+│ Source_Name (VARCHAR)   │     FK: Source_Key  │  FK: Label_Key      │ Label_Name (VARCHAR)    │
+│ Source_Type (VARCHAR)   │◄────────────────────┼────────────────────►│ Label_Category (VARCHAR)│
+│ Source_Category         │                     │                     │ Truth_Score (INT)       │
+│   (VARCHAR)             │                     │                     │ Label_Description       │
+│ Is_Political_Figure     │                     │                     │   (VARCHAR)             │
+│   (BOOLEAN)             │                     ▼                     │ Is_True (BOOLEAN)       │
+│ Is_Media_Outlet         │         ┌───────────────────────┐         │ Is_False (BOOLEAN)      │
+│   (BOOLEAN)             │         │   FACT_CLAIMS         │         └─────────────────────────┘
+│ Party_Affiliation       │         │   (Fact Table)        │
+│   (VARCHAR)             │         ├───────────────────────┤
+└─────────────────────────┘         │ PK: Claim_Key (INT)   │
+                                    │                       │
+                                    │ FK: Date_Key (INT)    │─────► Dim_Date (Publication Date)
+                                    │ FK: Stated_Date_Key   │─────► Dim_Date (Statement Date)
+                                    │     (INT)             │
+                                    │ FK: Source_Key (INT)  │─────► Dim_Source
+                                    │ FK: Label_Key (INT)   │─────► Dim_Label
+                                    │                       │
+                                    │ ─── MEASURES ───      │
+                                    │ Claim_Count (INT)     │
+                                    │ Word_Count (INT)      │
+                                    │ Days_To_Verify (INT)  │
+                                    │                       │
+                                    │ ─── DEGENERATE ───    │
+                                    │ News_Headline (TEXT)  │
+                                    │ Link_Of_News (VARCHAR)│
+                                    └───────────────────────┘</code></pre>
+<hr />
+<h2 id="dimension-tables-description">📋 Dimension Tables
+Description</h2>
+<h3 id="dim_date-date-dimension">1. Dim_Date (Date Dimension)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Column</th>
+<th>Data Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Date_Key</td>
+<td>INT (PK)</td>
+<td>Surrogate key (format: YYYYMMDD)</td>
+</tr>
+<tr class="even">
+<td>Full_Date</td>
+<td>DATE</td>
+<td>Complete date value</td>
+</tr>
+<tr class="odd">
+<td>Day</td>
+<td>INT</td>
+<td>Day of month (1-31)</td>
+</tr>
+<tr class="even">
+<td>Day_Name</td>
+<td>VARCHAR(10)</td>
+<td>Name of day (Monday, Tuesday, etc.)</td>
+</tr>
+<tr class="odd">
+<td>Week_Number</td>
+<td>INT</td>
+<td>Week of year (1-52)</td>
+</tr>
+<tr class="even">
+<td>Month</td>
+<td>INT</td>
+<td>Month number (1-12)</td>
+</tr>
+<tr class="odd">
+<td>Month_Name</td>
+<td>VARCHAR(15)</td>
+<td>Name of month</td>
+</tr>
+<tr class="even">
+<td>Quarter</td>
+<td>INT</td>
+<td>Quarter of year (1-4)</td>
+</tr>
+<tr class="odd">
+<td>Year</td>
+<td>INT</td>
+<td>4-digit year</td>
+</tr>
+<tr class="even">
+<td>Is_Weekend</td>
+<td>BOOLEAN</td>
+<td>TRUE if Saturday or Sunday</td>
+</tr>
+<tr class="odd">
+<td>Is_Holiday</td>
+<td>BOOLEAN</td>
+<td>TRUE if public holiday</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dim_source-source-dimension">2. Dim_Source (Source
+Dimension)</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 34%" />
+<col style="width: 40%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Column</th>
+<th>Data Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Source_Key</td>
+<td>INT (PK)</td>
+<td>Surrogate key</td>
+</tr>
+<tr class="even">
+<td>Source_Name</td>
+<td>VARCHAR(200)</td>
+<td>Name of the claim source</td>
+</tr>
+<tr class="odd">
+<td>Source_Type</td>
+<td>VARCHAR(50)</td>
+<td>Type: Person, Organization, Media</td>
+</tr>
+<tr class="even">
+<td>Source_Category</td>
+<td>VARCHAR(50)</td>
+<td>Category: Politician, Celebrity, Media Outlet, Social Media</td>
+</tr>
+<tr class="odd">
+<td>Is_Political_Figure</td>
+<td>BOOLEAN</td>
+<td>TRUE if political figure</td>
+</tr>
+<tr class="even">
+<td>Is_Media_Outlet</td>
+<td>BOOLEAN</td>
+<td>TRUE if media organization</td>
+</tr>
+<tr class="odd">
+<td>Party_Affiliation</td>
+<td>VARCHAR(50)</td>
+<td>Political party if applicable</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dim_label-fact-check-label-dimension">3. Dim_Label (Fact-Check
+Label Dimension)</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 34%" />
+<col style="width: 40%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Column</th>
+<th>Data Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Label_Key</td>
+<td>INT (PK)</td>
+<td>Surrogate key</td>
+</tr>
+<tr class="even">
+<td>Label_Name</td>
+<td>VARCHAR(20)</td>
+<td>Official PolitiFact label</td>
+</tr>
+<tr class="odd">
+<td>Label_Category</td>
+<td>VARCHAR(20)</td>
+<td>Grouped category: True, Partially True, False</td>
+</tr>
+<tr class="even">
+<td>Truth_Score</td>
+<td>INT</td>
+<td>Numeric truth score (0-5)</td>
+</tr>
+<tr class="odd">
+<td>Label_Description</td>
+<td>VARCHAR(200)</td>
+<td>Detailed label meaning</td>
+</tr>
+<tr class="even">
+<td>Is_True</td>
+<td>BOOLEAN</td>
+<td>TRUE if claim is verified as true</td>
+</tr>
+<tr class="odd">
+<td>Is_False</td>
+<td>BOOLEAN</td>
+<td>TRUE if claim is verified as false</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Label Reference Table:</strong> | Label_Name | Truth_Score |
+Label_Category | Description | |————|————-|—————-|————-| | TRUE | 5 |
+True | The statement is accurate | | mostly-true | 4 | Partially True |
+Accurate but needs clarification | | half-true | 3 | Partially True |
+Partially accurate but leaves out important details | | barely-true | 2
+| Partially True | Contains an element of truth but ignores critical
+facts | | FALSE | 1 | False | The statement is not accurate | |
+pants-fire | 0 | False | Not accurate and makes a ridiculous claim |</p>
+<hr />
+<h2 id="fact-table-description">📊 Fact Table Description</h2>
+<h3 id="fact_claims-central-fact-table">FACT_CLAIMS (Central Fact
+Table)</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Column</th>
+<th>Data Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Claim_Key</td>
+<td>INT (PK)</td>
+<td>Surrogate key for each fact-check</td>
+</tr>
+<tr class="even">
+<td>Date_Key</td>
+<td>INT (FK)</td>
+<td>Publication date reference</td>
+</tr>
+<tr class="odd">
+<td>Stated_Date_Key</td>
+<td>INT (FK)</td>
+<td>Date claim was made</td>
+</tr>
+<tr class="even">
+<td>Source_Key</td>
+<td>INT (FK)</td>
+<td>Reference to claim source</td>
+</tr>
+<tr class="odd">
+<td>Label_Key</td>
+<td>INT (FK)</td>
+<td>Reference to fact-check verdict</td>
+</tr>
+<tr class="even">
+<td>Claim_Count</td>
+<td>INT</td>
+<td>Always 1, for counting claims</td>
+</tr>
+<tr class="odd">
+<td>Word_Count</td>
+<td>INT</td>
+<td>Number of words in headline</td>
+</tr>
+<tr class="even">
+<td>Days_To_Verify</td>
+<td>INT</td>
+<td>Days between statement and publication</td>
+</tr>
+<tr class="odd">
+<td>News_Headline</td>
+<td>TEXT</td>
+<td>Degenerate dimension - claim text</td>
+</tr>
+<tr class="even">
+<td>Link_Of_News</td>
+<td>VARCHAR(500)</td>
+<td>Degenerate dimension - source URL</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="relationships-cardinality">🔗 Relationships (Cardinality)</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Relationship</th>
+<th>Cardinality</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Dim_Date → FACT_CLAIMS</td>
+<td>1:N</td>
+<td>One date can have many claims</td>
+</tr>
+<tr class="even">
+<td>Dim_Source → FACT_CLAIMS</td>
+<td>1:N</td>
+<td>One source can make many claims</td>
+</tr>
+<tr class="odd">
+<td>Dim_Label → FACT_CLAIMS</td>
+<td>1:N</td>
+<td>One label can apply to many claims</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="grain-definition">🗂️ Grain Definition</h2>
+<p><strong>Grain:</strong> One row per fact-checked claim published by
+PolitiFact.</p>
+<p>Each record in the fact table represents a single claim that has
+been: - Made by a specific source - On a specific date (Stated_On) -
+Fact-checked and published on another date (Date) - Assigned a truth
+rating (Label)</p>
+<hr />
+<h2 id="use-cases">📈 Use Cases</h2>
+<ol type="1">
+<li><strong>Trend Analysis:</strong> Track fact-checking patterns over
+time</li>
+<li><strong>Source Analysis:</strong> Identify sources with highest
+false claim rates</li>
+<li><strong>Label Distribution:</strong> Analyze distribution of truth
+ratings</li>
+<li><strong>Verification Speed:</strong> Measure time to fact-check
+claims</li>
+<li><strong>Political Analysis:</strong> Compare claim patterns by party
+affiliation</li>
+</ol>
